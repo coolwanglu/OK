@@ -36,7 +36,14 @@ function setBoard(row, col, value) {
   cellElement.classList.remove('empty');
 }
 
-function check(row, col) {
+function finishGame(result) {
+  allowMove = false;
+  // show message
+  document.getElementById('result').innerHTML = ['You Win!', 'You Lose!', 'Tie!'][result];
+  document.querySelector('.msg').classList.remove('hidden');
+}
+
+function check(row, col, user_move) {
   var list = checkList[row][col];
   for(var i = 0; i < list.length; ++i) { 
     var item = list[i];
@@ -44,16 +51,19 @@ function check(row, col) {
     if(c == 0) continue;
     if(board[item[2]][item[3]] != c) continue;
     if(board[item[4]][item[5]] != c) continue;
+    finishGame(user_move ? 0 : 1);
     return true;
   }
-  return false;
-}
-
-function finishGame(userWin) {
-  allowMove = false;
-  // show message
-  document.getElementById('result').innerHTML = (userWin ? 'You Win!' : 'You Lose!');
-  document.querySelector('.msg').classList.remove('hidden');
+  for(var i = 0; i < ROW; ++i) {
+    for(var j = 0; j < COL; ++j) {
+      if(board[i][j] == 0) {
+        return false;
+      }
+    }
+  }
+  // no move left
+  finishGame(2);
+  return true;
 }
 
 function calcAIMove() {
@@ -72,8 +82,7 @@ function user_move(row, col, value) {
     return;
 
   setBoard(row, col, value);
-  if(check(row, col)) {
-    finishGame(true);
+  if(check(row, col, true)) {
     return;
   }
  
@@ -82,9 +91,8 @@ function user_move(row, col, value) {
     waitingForAI = false;
     var move = calcAIMove();
     setBoard(move[0], move[1], move[2]);
- 
-    if(check(move[0], move[1])) {
-      finishGame(false);
+    if(check(move[0], move[1], false)) {
+      return;
     }
   }, 500);
 }
@@ -98,7 +106,6 @@ function addCheckItem(item) {
 function init() {
   // setup board
   document.getElementById('rematch-button').addEventListener('click', function() {
-    console.log('here');
     reset();
   });
   var container = document.querySelector('.game-container');
