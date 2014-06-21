@@ -1,189 +1,355 @@
 document.addEventListener('DOMContentLoaded', function() {
 
-var ROW = 4;
-var COL = 4;
-var board = [
-  [0,0,0,0],
-  [0,0,0,0],
-  [0,0,0,0],
-  [0,0,0,0]
-];
-var boardElements = [
-  [null,null,null,null],
-  [null,null,null,null],
-  [null,null,null,null],
-  [null,null,null,null]
-];
-var allowMove = true;
-var waitingForAI = false;
-var aiMove = [0,0,0];
-var checkList = [
-  [[],[],[],[]],
-  [[],[],[],[]],
-  [[],[],[],[]],
-  [[],[],[],[]]
-];
+var ROW = 3;
+var COL = 3;
+var FPS = 60.0;
+
+// margin plus width/height
+var MARGIN = 16;
+var TILE_SIZE = 105;
+
+var INNER_SHADOW_SCALE = 100;
+var INNER_SHADOW_MAX_OFFSET = 8;
+var INNER_SHADOW_BLUR_RADIUS = 16;
+var INNER_SHADOW_SPREAD_RADIUS = -8;
+var INNER_SHADOW_COLOR = 'rgba(0,0,0,0.7)';
+var innerShadowGrids = [];
+
+var GAME_CONTAINER_MAX_OFFSET = 4;
+var GAME_CONTAINER_SHADOW_BLUR_RADIUS = 6;
+var GAME_CONTAINER_SHADOW_SPREAD_RADIUS = -3;
+var GAME_CONTAINER_SHADOW_COLOR = 'rgba(0,0,0,0.7)';
+
+var TILE_MAX_OFFSET = 3;
+var TILE_SHADOW_BLUR_RADIUS = 3;
+var TILE_SHADOW_SPREAD_RADIUS = -1;
+var TILE_SHADOW_COLOR = 'rgba(0,0,0,0.7)';
+var tileElements = [];
+
+var BASE_Z_INDEX = 100;
+
+var mouseX = 0.0;
+var mouseY = 0.0;
+var shadow_factor = 1.0;
+var shadow_enabled = false;
+
+var OK = false;
+var difficulty = 1;
+
 
 function assert(condition) {
   if(!condition)
     throw "Assertion Failed";
 }
-
-function setBoard(row, col, value) {
-  board[row][col] = value;
-  var cellElement = boardElements[row][col];
-  cellElement.innerHTML='<div class="' + (value == 1 ? 'ring' : 'cross') + '"></div>';
-  cellElement.classList.remove('empty');
-}
-
-function finishGame(result) {
-  allowMove = false;
-  // show message
-  document.getElementById('result').innerHTML = ['You Win!', 'You Lose!', 'Tie!'][result];
-  document.querySelector('.msg').classList.remove('hidden');
-}
-
-function check(row, col, user_move) {
-  var list = checkList[row][col];
-  for(var i = 0; i < list.length; ++i) { 
-    var item = list[i];
-    var c = board[item[0]][item[1]];
-    if(c == 0) continue;
-    if(board[item[2]][item[3]] != c) continue;
-    if(board[item[4]][item[5]] != c) continue;
-    finishGame(user_move ? 0 : 1);
-    return true;
+function randomElement(l, pop) {
+  var idx = Math.floor(Math.random() * l.length);
+  var ret = l[idx];
+  if(pop) {
+    l[idx] = l[l.length-1];
+    l.pop();
   }
-  for(var i = 0; i < ROW; ++i) {
-    for(var j = 0; j < COL; ++j) {
-      if(board[i][j] == 0) {
-        return false;
-      }
+  return ret;
+}
+function randomeShuffle(l) {
+  var ll = l.length;
+  while(ll > 1) {
+    var idx = Math.floor(Math.random() * ll);
+    swap(l, idx, ll-1);
+    --ll;
+  }
+}
+function swap(l, i1, i2) {
+  var tmp = l[i1];
+  l[i1] = l[i2];
+  l[i2] = tmp;
+}
+
+function Script(script) {
+  this.script = script;
+  this.script_idx = 0;
+  var self = this;
+  this.next = function() {
+    if(self.script_idx < self.script.length) {
+        var item = self.script[self.script_idx];
+        if(typeof item === 'string') {
+          ++ self.script_idx;
+          self.next();
+          return;
+        }
+        var fn = item[0];
+        var timeOut = item[1];
+        var ret = fn();
+
+        if(typeof ret === 'undefined') {
+          ++self.script_idx;
+        } else {
+          for(var i = 0; i < self.script.length; ++i) {
+            if(self.script[i] === ret) {
+              ++i;
+              break;
+            }
+          }
+          self.script_idx = i;
+          timeOut = 0;
+        }
+        setTimeout(self.next, timeOut);
     }
   }
-  // no move left
-  finishGame(2);
-  return true;
 }
 
-function calcAIMove() {
-  for(var i = 0; i < ROW; ++i) {
-    for(var j = 0; j < COL; ++j) {
-      if(board[i][j] == 0) {
-        return [i, j, Math.round(1 + Math.random())];
-      }
-    }
-  }
-  assert(false);
+function getTileOriginalPos(tile) {
+   return [
+    parseInt(tile.getAttribute('data-row')),
+    parseInt(tile.getAttribute('data-col'))
+   ];
 }
 
-function user_move(row, col, value) {
-  if(board[row][col] != 0)
-    return;
-
-  setBoard(row, col, value);
-  if(check(row, col, true)) {
-    return;
-  }
- 
-  waitingForAI = true;
-  setTimeout(function() {
-    waitingForAI = false;
-    var move = calcAIMove();
-    setBoard(move[0], move[1], move[2]);
-    if(check(move[0], move[1], false)) {
-      return;
-    }
-  }, 500);
+function getTilePos(tile) {
+   return [
+    parseInt(tile.getAttribute('data-cur-row')),
+    parseInt(tile.getAttribute('data-cur-col'))
+   ];
 }
-
-function addCheckItem(item) {
-  for(var i = 0; i < 6; i += 2) {
-    checkList[item[i]][item[i+1]].push(item);
-  }
+function moveTile(tile, row, col) {
+  tile.setAttribute('data-cur-row', row);
+  tile.setAttribute('data-cur-col', col);
+  tile.style.left = MARGIN + (MARGIN + TILE_SIZE) * col + 'px';
+  tile.style.top = MARGIN + (MARGIN + TILE_SIZE) * row + 'px';
 }
 
 function init() {
   // setup board
-  document.getElementById('rematch-button').addEventListener('click', function() {
-    reset();
-  });
   var container = document.querySelector('.game-container');
-  container.addEventListener('contextmenu', function(e) {
-    e.preventDefault();
-  });
-/*
-  container.addEventListener('mousedown', function(e) {
-    e.preventDefault();
-  });
-*/
+  container.style.width = MARGIN + (MARGIN+TILE_SIZE) * COL + 'px';
+  container.style.height = MARGIN + (MARGIN+TILE_SIZE) * ROW + 'px';
+
+  // shadow grids
   for(var cur_row = 0; cur_row < ROW; ++cur_row) {
-    var rowElement = document.createElement('div');
-    rowElement.classList.add('grid-row');
-    container.appendChild(rowElement);
     for(var cur_col = 0; cur_col < COL; ++cur_col) {
       var cellElement = document.createElement('div');
       cellElement.classList.add('grid');
-      cellElement.classList.add('empty');
+      cellElement.style.left = (MARGIN + TILE_SIZE) * cur_col + 'px';
+      cellElement.style.top = (MARGIN + TILE_SIZE) * cur_row + 'px';
+      container.appendChild(cellElement);
+      innerShadowGrids.push(cellElement);
+    }
+  }
+
+  // tiles
+  for(var cur_row = 0; cur_row < ROW; ++cur_row) {
+    for(var cur_col = 0; cur_col < COL; ++cur_col) {
+      var cellElement = document.createElement('div');
+      cellElement.classList.add('tile');
+      cellElement.classList.add('inactive');
+      cellElement.style['zIndex'] = BASE_Z_INDEX + 1;
+
       cellElement.setAttribute('data-row', cur_row);
       cellElement.setAttribute('data-col', cur_col);
-      rowElement.appendChild(cellElement);
-      boardElements[cur_row][cur_col] = cellElement;
 
-      cellElement.addEventListener('mouseup', function(e) {
-        e.preventDefault();
-        if(!allowMove || waitingForAI) return;
-       
-        if(e.button == 0 || e.button == 2) {
-          var target = e.currentTarget;
-          var row = parseInt(target.getAttribute('data-row'));
-          var col = parseInt(target.getAttribute('data-col'));
-          user_move(row, col, ((e.button == 0) ? 1 : 2));
-        }
-      });
+      moveTile(cellElement, cur_row, cur_col);
+
+      container.appendChild(cellElement);
+
+      if(cur_row == 1 && cur_col == 0)
+          cellElement.classList.add('O');
+      if(cur_row == 1 && cur_col == 1)
+          cellElement.classList.add('K');
+      if(cur_row == 1 && cur_col == 2)
+          cellElement.classList.add('EXCLAMATION');
+
+      tileElements.push(cellElement);
     }
   }
 
-  // setup checkList
-  for(var i = 0; i < ROW - 2; ++i) {
-    for(var j = 0; j < COL; ++j) {
-      addCheckItem([i, j, i+1, j, i+2, j]);
-    }
-  }
-  for(var i = 0; i < ROW; ++i) {
-    for(var j = 0; j < COL - 2; ++j) {
-      addCheckItem([i, j, i, j+1, i, j+2]);
-    }
-  }
-  for(var i = 0; i < ROW - 2; ++i) {
-    for(var j = 0; j < COL - 2; ++j) {
-      addCheckItem([i, j, i+1, j+1, i+2, j+2]);
-    }
-  }
-  for(var i = 2; i < ROW; ++i) {
-    for(var j = 0; j < COL - 2; ++j) {
-      addCheckItem([i, j, i-1, j+1, i-2, j+2]);
-    }
-  }
+  document.addEventListener('mousemove', function(e) {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
 }
 
 function reset() {
+  new Script([
+    [function() { // check if all tiles are in position
+      tileElements.forEach(function(e) {
+        var opos = getTileOriginalPos(e);
+        var pos = getTilePos(e);
+        if(opos[0] != pos[0] || opos[1] != pos[1]) {
+          return;  
+        }
+      });
+      return 'L1';
+    }, 0],
+    // move tiles to their original places
+    [activeTiles, 300],
+    [function() {
+      tileElements.forEach(function(e) {
+        var opos = getTileOriginalPos(e);
+        moveTile(e, opos[0], opos[1]);
+      });
+    }, 700],
+    [deactiveTiles, 300],
+
+    'L1',
+    [function() {
+      input_
+    }, 0],
+
+    'L2', // wait for OK
+    [function() {
+    }, 0],
+    [function() {}, 300],
+    [function() { return 'L2'; }, 0]
+  ]);
+}
+
+function renderInnerShadowGrids() {
+  innerShadowGrids.forEach(function(e) {
+    var rect = e.getBoundingClientRect();
+    var mx = mouseX - rect.left;
+    var my = mouseY - rect.right;
+    
+    var shadowX = (mx < 0)
+      ? Math.min(-mx / INNER_SHADOW_SCALE, INNER_SHADOW_MAX_OFFSET)
+      : (mx > rect.width)
+      ? Math.max((rect.width - mx) / INNER_SHADOW_SCALE, -INNER_SHADOW_MAX_OFFSET)
+      : 0 ;
+    var shadowY = (my < 0)
+      ? Math.min(-my / INNER_SHADOW_SCALE, INNER_SHADOW_MAX_OFFSET)
+      : (my > rect.height)
+      ? Math.max((rect.height - my) / INNER_SHADOW_SCALE, -INNER_SHADOW_MAX_OFFSET)
+      : 0 ;
+    e.style['boxShadow'] = 'inset ' 
+      + shadowX * shadow_factor + 'px '
+      + shadowY * shadow_factor + 'px '
+      + INNER_SHADOW_BLUR_RADIUS * shadow_factor + 'px '
+      + INNER_SHADOW_SPREAD_RADIUS * shadow_factor + 'px '
+      + INNER_SHADOW_COLOR;
+  });
+}
+
+function renderGameContainerShadow() {
+  var e = document.querySelector('.game-container');
+  var rect = e.getBoundingClientRect();
+  var mx = mouseX - rect.left - rect.width / 2.0;
+  var my = mouseY - rect.top - rect.height / 2.0;
+
+  var tmp_offset = GAME_CONTAINER_MAX_OFFSET * 0.8;
+  var shadowX = (-mx / rect.width * tmp_offset);
+  shadowX = Math.min(Math.max(shadowX, -GAME_CONTAINER_MAX_OFFSET), GAME_CONTAINER_MAX_OFFSET);
+  var shadowY = (-my / rect.height * tmp_offset);
+  shadowY = Math.min(Math.max(shadowY, -GAME_CONTAINER_MAX_OFFSET), GAME_CONTAINER_MAX_OFFSET);
+  e.style['boxShadow'] = shadowX + 'px '
+      + shadowY + 'px '
+      + GAME_CONTAINER_SHADOW_BLUR_RADIUS + 'px '
+      + GAME_CONTAINER_SHADOW_SPREAD_RADIUS + 'px '
+      + GAME_CONTAINER_SHADOW_COLOR;
+}
+
+function renderTileShadow() {
+  tileElements.forEach(function(e) {
+    var rect = e.getBoundingClientRect();
+    var mx = mouseX - rect.left - rect.width / 2.0;
+    var my = mouseY - rect.top - rect.height / 2.0;
+  
+    var tmp_offset = TILE_MAX_OFFSET * 0.8;
+    var shadowX = (-mx / rect.width * tmp_offset);
+    shadowX = Math.min(Math.max(shadowX, -TILE_MAX_OFFSET), TILE_MAX_OFFSET);
+    var shadowY = (-my / rect.height * tmp_offset);
+    shadowY = Math.min(Math.max(shadowY, -TILE_MAX_OFFSET), TILE_MAX_OFFSET);
+    e.style['boxShadow'] = shadowX * shadow_factor + 'px '
+        + shadowY * shadow_factor + 'px '
+        + TILE_SHADOW_BLUR_RADIUS * shadow_factor + 'px '
+        + TILE_SHADOW_SPREAD_RADIUS * shadow_factor + 'px '
+        + TILE_SHADOW_COLOR;
+  });
+}
+
+function renderShadow() {
+  renderInnerShadowGrids();
+  renderGameContainerShadow();
+  renderTileShadow();
+}
+
+function beginMove () {
+  activeTiles();
+}
+
+function activeTiles() {
+  shadow_enabled = true;
+  shadow_factor = 1.0;
+  var l = [];
+  for(var i = 1; i <= ROW * COL; ++i) {
+    l.push(i);
+    // TODO: difficulty
+    //l.push(BASE_Z_INDEX+i);
+  }
+  tileElements.forEach(function(e) {
+    e.classList.add('active');
+    e.classList.remove('inactive');
+    var zIndex = randomElement(l);
+    e.style['zIndex'] = zIndex;
+    if(zIndex > BASE_Z_INDEX) {
+      e.classList.add('zoomIn');
+      e.classList.remove('zoomOut');
+    } else {
+      e.classList.add('zoomOut');
+      e.classList.remove('zoomIn');
+    }
+  });
+  setTimeout(shuffleTiles, 300);
+}
+
+function shuffleTiles () {
+  var l = [];
   for(var i = 0; i < ROW; ++i) {
     for(var j = 0; j < COL; ++j) {
-      board[i][j] = 0;
-      var cellElement = boardElements[i][j];
-      cellElement.classList.add('empty');
-      cellElement.innerHTML = '';
+      l.push([i,j]);
     }
   }
-  allowMove = true;
-  waitingForAI = false;
-  document.querySelector('.msg').classList.add('hidden');
+  randomeShuffle(l);
+  // make sure that no tile stay at the same place
+  tileElements.forEach(function(e, i) {
+    var pos = getTilePos(e);
+    if(l[i][0] == pos[0] && l[i][1] == pos[1]) {
+      var idx = Math.floor(Math.random() * (l.length-1));
+      swap(l, i, (idx == i) ? (l.length - 1) : idx)
+    }
+  });
+  tileElements.forEach(function(e, i) {
+    moveTile(e, l[i][0], l[i][1]);
+  });
+  setTimeout(activeTiles, 700);
+}
+
+function deactiveTiles() {
+  shadow_enabled = false;
+  shadow_factor = 0.0;
+  tileElements.forEach(function(e) {
+    e.classList.add('inactive');
+    e.classList.remove('active');
+    e.classList.remove('zoomIn');
+    e.classList.remove('zoomOut');
+    e.style['zIndex'] = 101;
+    e.style['boxShadow'] = '';
+  });
+  setTimeout(activeTiles, 300);
+}
+
+function render() {
+  // draw
+  requestAnimationFrame(function() {
+    if(shadow_enabled) {
+      renderShadow();
+    }
+    setTimeout(render, 1.0 / FPS);
+  });
 }
 
 (function main() {
   init();
   reset();
+  //beginMove();
+  render();
 })();
 
 });
