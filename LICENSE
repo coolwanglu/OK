@@ -1,13 +1,22 @@
 halftone.png
-CC BY-SA 3.0 Subtle Patterns © Atle Mo.
-From http://subtlepatterns.com/
+CC BY-SA 3.0 
+Subtle Patterns © Atle Mo.
+http://subtlepatterns.com/
 
 tile.png
-tile-light.png
-Generated with
 http://www.cssmatic.com/noise-texture
 
-Layout inspired from 2048
+star.svg
+Creative Commons 3.0
+Modern UI Icons
+http://modernuiicons.com/
+See `license-modernuiicons.txt`
+
+Animation taken from Animate.css
+https://github.com/daneden/animate.css
+
+Layout inspired by 2048
 https://github.com/gabrielecirulli/2048
+
 
 
