@@ -1,10 +1,9 @@
-#!TicTacToe
+#OK!
 
-TicTacToe, not really.
+A weekend project by Lu Wang
 
-Play it [here](http://coolwanglu.github.io/NotTicTacToe)
+Play it [here](http://coolwanglu.github.io/OK)
 
-by Lu Wang
 
 
 ### Special Thanks
