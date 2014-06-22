@@ -598,7 +598,17 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 0],
 
       'KeepGoing',
-      [deactivateTiles, 500], // wait for animation
+      [function() {
+        // restore tiles
+        // user may have clicked tiles right before/after the score page
+        tileElements.forEach(function(e) {
+          e.classList.remove('pressed');
+        });
+        deactivateTiles();
+        // we are going to show and hide the bombs
+        // do not allow input here
+        input_allowed = false; 
+      }, 500],
       [function() { 
         keep_going = true;
         document.querySelector('.game-container').classList.add('keep-going');
