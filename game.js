@@ -448,7 +448,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
       'RoundStart',
       [function() {
-        input_allowed = true;
         // remove stars, they may block click events
         starElements.forEach(function(e) {
           e.parentNode.removeChild(e);
@@ -578,7 +577,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
       'WaitForButton',
       [function() {
-        if((button_clicked == 'StartOver') || (button_clicked == 'KeepGoing')) {
+        if((button_clicked == 'StartOver') 
+          || (button_clicked == 'KeepGoing')) {
           tmp_label = button_clicked;
           return 'HideScorePage';
         }
@@ -591,9 +591,12 @@ document.addEventListener('DOMContentLoaded', function() {
         var msgE = document.querySelector('.msg');
         msgE.classList.remove('flipInX');
         msgE.classList.add('flipOutX');
-      }, 1000], 
+      }, 500], 
       [function() { 
+        activateTiles();
         clearTileHingeEffects();
+      }, 700],
+      [function() {
         return tmp_label; 
       }, 0],
 
