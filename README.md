@@ -10,4 +10,4 @@ Play it [here](http://coolwanglu.github.io/OK)
 
 zhxngzhx
 
-He "Lonnie" Liu <liulonnie@gmail.com> http://liulonnie.net/
+He "Lonnie" Liu http://liulonnie.net/
