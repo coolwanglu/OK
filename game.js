@@ -598,7 +598,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 0],
 
       'KeepGoing',
-      [function() { }, 500], // wait for animation
+      [deactivateTiles, 500], // wait for animation
       [function() { 
         keep_going = true;
         document.querySelector('.game-container').classList.add('keep-going');
