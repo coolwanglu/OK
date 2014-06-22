@@ -26,13 +26,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     'You are awesome!',
   ];
-QUESTIONS = ['test1','test2'];
 
   // round info
   var round_question_idx = -1;
   var round_shuffle_count = 0;
   var round_hide_tile_count = 0;
   var round_score = 0;
+  var keep_going = false;
 
   // shadow 
   var INNER_SHADOW_SCALE = 100;
@@ -53,6 +53,7 @@ QUESTIONS = ['test1','test2'];
   var TILE_SHADOW_COLOR = 'rgba(0,0,0,0.7)';
   var tileElements = [];
   var okbangTileElements = [];
+  var starElements = [];
 
   var BASE_Z_INDEX = 100;
 
@@ -66,10 +67,14 @@ QUESTIONS = ['test1','test2'];
 
   var input_allowed = false;
   var input_buffer = [];
+  var button_clicked = false;
+
 
   function assert(condition) {
-    if(!condition)
+    if(!condition) {
+      console.log((new Error).stack);
       throw "Assertion Failed";
+    }
   }
   function randomElement(l, pop) {
     var idx = Math.floor(Math.random() * l.length);
@@ -120,10 +125,8 @@ QUESTIONS = ['test1','test2'];
         if(typeof ret === 'undefined') {
           ++self.script_idx;
         } else {
-          if(ret in self.labelMap)
-            self.script_idx = self.labelMap[ret] + 1;
-          else
-            self.script_idx = self.script.length;
+          assert(ret in self.labelMap);
+          self.script_idx = self.labelMap[ret] + 1;
           timeOut = 0;
         }
         setTimeout(self.next, timeOut);
@@ -141,8 +144,8 @@ QUESTIONS = ['test1','test2'];
   function getTilePos(tile) {
     return [
       parseInt(tile.getAttribute('data-cur-row')),
-    parseInt(tile.getAttribute('data-cur-col'))
-      ];
+      parseInt(tile.getAttribute('data-cur-col'))
+    ];
   }
   function moveTile(tile, row, col) {
     tile.setAttribute('data-cur-row', row);
@@ -282,6 +285,69 @@ QUESTIONS = ['test1','test2'];
     });
   }
 
+  function clearTileHingeEffects () {
+    tileElements.forEach(function(e) {
+      e.classList.add('revealed');
+      for(var i = 0; i < 4; ++i)
+        e.classList.remove('hinge' + i);
+    });
+  }
+
+  function showScorePage() {
+    document.getElementById('score').innerHTML = round_score;
+    var scoreSharingE = document.getElementById('sharing');
+    scoreSharingE.innerHTML = '';
+    var buttonE = document.createElement('a');
+    scoreSharingE.appendChild(buttonE);
+    buttonE.setAttribute('href', 'https://twitter.com/share');
+    buttonE.setAttribute('class', 'twitter-share-button');
+    buttonE.setAttribute('data-via', 'coolwanglu');
+    buttonE.setAttribute('data-url', 'http://coolwanglu.github.io/OK/');
+    buttonE.setAttribute('data-counturl', 'http://coolwanglu.github.io/OK/');
+    buttonE.textContent = 'Tweet';
+
+    buttonE.setAttribute('data-text', 
+      (round_score > 0) 
+        ? ('I just scored ⭐️' + round_score + ' in OK! How much can you get? #OK!')
+        : ('I just played OK! Check it out! #OK')
+    );
+    twttr.widgets.load(scoreSharingE);
+
+    if(keep_going)
+      document.getElementById('keepgoing-button').classList.add('hidden');  
+    else
+      document.getElementById('keepgoing-button').classList.remove('hidden');  
+
+    var msgE = document.querySelector('.msg');  
+    msgE.classList.remove('hidden'); 
+    msgE.classList.remove('flipOutX');
+    msgE.classList.add('flipInX');
+  }
+  function showStars(starsPerTile) {
+    var container = document.querySelector('.game-container');
+    var baseStarElement = document.querySelector('.star');
+    var starW = 32; 
+    var starH = 32;
+    var score = 0;
+    tileElements.forEach(function(e) {
+      if(e.classList.contains('pressed')) return;
+      score += starsPerTile;
+      var l = e.offsetLeft;
+      var t = e.offsetTop;
+      for(var i = 0; i < starsPerTile; ++i) {
+        var starE = baseStarElement.cloneNode();
+        starElements.push(starE);
+        starE.classList.add('up');
+        starE.style.left = 
+          Math.random() * TILE_SIZE / 2 + TILE_SIZE / 4 - starW/2  + l + 'px';
+        starE.style.top = 
+          Math.random() * TILE_SIZE / 2 + TILE_SIZE / 4 - starH/2 + t + 'px'; 
+        container.appendChild(starE); 
+      }
+    });
+    return score;
+  }
+
   function init() {
     // setup board
     var container = document.querySelector('.game-container');
@@ -338,34 +404,37 @@ QUESTIONS = ['test1','test2'];
 
     document.getElementById('startover-button').addEventListener('click', function(e) {
       e.preventDefault();
-      var msgE = document.querySelector('.msg');
-      msgE.classList.add('flipOutX');
-      setTimeout(restart, 800);
+      button_clicked = 'StartOver';
+    });
+    document.getElementById('keepgoing-button').addEventListener('click', function(e) {
+      e.preventDefault();
+      button_clicked = 'KeepGoing';
     });
   }
-
   function startGameLoop() {
     var shuffle_left = 0;
-    var question_updated = false;
+    var stage_advanced = false;
+    var stage_retries = 3;
+    var tmp_label = '';
     new Script([
+      'StartOver',
       [function() { // init a game
-        tileElements.forEach(function(e) {
-          e.classList.add('revealed');
-          for(var i = 0; i < 4; ++i)
-            e.classList.remove('hinge' + i);
-        });
-        document.getElementById('question').innerHTML = 'Shall we start?';
+        clearTileHingeEffects();
         var msgE = document.querySelector('.msg');
         msgE.classList.add('hidden');
         msgE.classList.remove('flipInX');
         msgE.classList.remove('flipOutX');
 
+        document.getElementById('question').innerHTML = 'Shall we start?';
+
         round_question_idx = -1;
         round_shuffle_count = 0;
         round_hide_tile_count = 0;
         round_score = 0;
+        keep_going = false;
       }, 0],
       [function() { return (allTileInOriginalPosition() ? 'RoundStart' : 'ResetTilePosition'); }, 0],
+
       'ResetTilePosition',
       [activateTiles, 300],
       [function() {
@@ -376,10 +445,14 @@ QUESTIONS = ['test1','test2'];
       }, 700],
 
       'RoundStart',
-      [deactivateTiles, 300],
       [function() {
         input_allowed = true;
+        starElements.forEach(function(e) {
+          e.parentNode.removeChild(e);
+        });
+        starElements.length = 0;
       }, 0],
+      [deactivateTiles, 300],
 
       'WaitForInput',
       [function() { 
@@ -395,21 +468,26 @@ QUESTIONS = ['test1','test2'];
       [function() {
         var answerE = document.getElementById('answer');
         if(input_buffer.join('') == 'OKBANG') {
-          // advance
-          ++ round_question_idx;
           answerE.classList.add('bounceOutUp');
+          if(!keep_going) {
+            // advance
+            ++ round_question_idx;
 
-          // clear question
-          var questionE = document.getElementById('question');
-          questionE.classList.remove('bounceIn');
-          questionE.classList.add('bounceOut');
+            // clear question
+            var questionE = document.getElementById('question');
+            questionE.classList.remove('bounceIn');
+            questionE.classList.add('bounceOut');
+          }
 
-          question_updated = true;
+          round_score += showStars(stage_retries);
+
+          stage_advanced = true;
+          stage_retries = 3;
 
           // update difficulty
-          if(round_question_idx == QUESTIONS.length - 1) {
-            // ending
-            round_shuffle_count = 5;
+          if(keep_going || (round_question_idx == QUESTIONS.length - 1)) {
+            // ending or keep_going
+            round_shuffle_count = 3; 
             round_hide_tile_count = 3;
           } else {
             round_shuffle_count = (round_question_idx % 3) + 1;
@@ -418,14 +496,30 @@ QUESTIONS = ['test1','test2'];
         } else {
           // continue this question
           answerE.classList.add('shake');
-          question_updated = false;
+          stage_advanced = false;
+          if(stage_retries > 0)
+            -- stage_retries;
         }
 
         input_buffer.length = 0;
         tileElements.forEach(function(e) {
           e.classList.remove('pressed');
         });
+      }, 300], // wait for animation
 
+      [function() { // clear answer box
+        var answerE = document.getElementById('answer');
+        answerE.innerHTML = '';
+        answerE.classList.remove('bounceOutUp');
+        answerE.classList.remove('shake');
+      }, 0],
+
+      'Shuffle',
+      [function() {
+        shuffle_left = round_shuffle_count;
+      }, 0],
+      [activateTiles, 500],
+      [function() { // hide some tiles according to the difficulty
         // hide some tile according to the difficulty
         randomShuffle(okbangTileElements);
         okbangTileElements.forEach(function(e, i) {
@@ -434,31 +528,20 @@ QUESTIONS = ['test1','test2'];
           else
             e.classList.add('revealed');
         });
-      }, 300], // wait for animation
-
-      [function() {
-        var answerE = document.getElementById('answer');
-        answerE.innerHTML = '';
-        answerE.classList.remove('bounceOutUp');
-        answerE.classList.remove('shake');
-
-        shuffle_left = round_shuffle_count;
-      }, 0],
-
-      'Shuffle',
-      [activateTiles, 500],
+      }, 500],
+      'ShuffleOnce',
       [function() {
         if(shuffle_left == 0)
           return 'ShuffleEnd';
         --shuffle_left;
         shuffleTiles();
       }, 700],
-      [function() { return 'Shuffle'; }, 0],
+      [function() { return 'ShuffleOnce'; }, 0],
 
       'ShuffleEnd',
       [function() { // next question
         deactivateTiles();
-        if(question_updated) {
+        if(stage_advanced && !keep_going) {
           var e = document.getElementById('question');
           if(round_question_idx >= 0) {
             e.innerHTML = QUESTIONS[round_question_idx];
@@ -469,7 +552,7 @@ QUESTIONS = ['test1','test2'];
       }, 300], 
 
       [function() { 
-        if(round_question_idx < QUESTIONS.length - 1)
+        if(keep_going || (round_question_idx < QUESTIONS.length - 1))
           return 'RoundStart'; // next round
       }, 0],
 
@@ -479,15 +562,36 @@ QUESTIONS = ['test1','test2'];
         tileElements.forEach(function(e) {
           e.classList.add('hinge' + Math.floor(Math.random() * 4));
         });
+        button_clicked = false;
       }, 1500],
-      [function() { // show score
-        document.getElementById('score').innerHTML = round_score;
+      [showScorePage, 1000],
 
-        var e = document.querySelector('.msg');  
-        e.classList.remove('hidden'); 
-        e.classList.remove('flipOutX');
-        e.classList.add('flipInX');
-      }, 1000],
+      'WaitForButton',
+      [function() {
+        if((button_clicked == 'StartOver') || (button_clicked == 'KeepGoing')) {
+          tmp_label = button_clicked;
+          return 'HideScorePage';
+        }
+        assert(!button_clicked);
+      }, 10],  
+      [function() { return 'WaitForButton'; }, 0],
+
+      'HideScorePage',
+      [function() {
+        var msgE = document.querySelector('.msg');
+        msgE.classList.remove('flipInX');
+        msgE.classList.add('flipOutX');
+      }, 1000], 
+      [function() { 
+        clearTileHingeEffects();
+        return tmp_label; 
+      }, 0],
+
+      'KeepGoing',
+      [function() { 
+        keep_going = true;
+        return 'Shuffle'; 
+      }, 0]
     ]);
   }
 

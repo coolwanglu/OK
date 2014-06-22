@@ -170,7 +170,7 @@ body {
   -webkit-backface-visibility: visible !important;
   backface-visibility: visible !important;
 }
-.msg.hidden {
+.hidden {
   display: none;
 }
 .msg h1 {
@@ -181,11 +181,45 @@ body {
   margin-right: 48px;
   margin-bottom: 64px;
   display: inline-block;
+  cursor: default;
 }
 .star {
   vertical-align: middle;
   margin-right: -8px;
   opacity: 0.5;
+}
+@-webkit-keyframes starUp {
+  0% {
+    opacity: 0.3;
+    -webkit-transform: translateY(0) rotate(0);
+    transform: translateY(0) rotate(0)
+  }
+  100% {
+    opacity: 0;
+    -webkit-transform: translateY(-16px) rotate(-180deg);
+    transform: translateY(-16px) rotate(-180deg);
+  }
+}
+@keyframes starUp {
+  0% {
+    opacity: 0.3;
+    -webkit-transform: rotate(0) translateY(0);
+    transform: rotate(0) translateY(0);
+  } 100% {
+    opacity: 0;
+    -webkit-transform: translateY(-16px) rotate(-180deg);
+    transform: translateY(-16px) rotate(-180deg);
+  }
+}
+.star.up {
+  width: 32px;
+  height: 32px;
+  -webkit-animation: starUp 1s ease-out both;
+  animation: starUp 1s both;
+  position: absolute;
+  z-index: 200;
+  -webkit-transform-origin: 50% 50%;
+  transform-origin: 50% 50%;
 }
 #sharing {
   display: inline-block;
