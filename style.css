@@ -183,6 +183,9 @@ body {
   display: inline-block;
   cursor: default;
 }
+.keep-going #keepgoing-button {
+  display: none;
+}
 .star {
   vertical-align: middle;
   margin-right: -8px;
@@ -324,6 +327,20 @@ body {
 .tile.BANG:after {
   content: '!';
   color: #d997b5;
+}
+.tile.bomb img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin-left: -36px;
+  margin-top: -36px;
+  width: 72px;
+  height: 72px;
+  opacity: 0;
+  transition: opacity 1s;
+}
+.keep-going .tile.bomb.revealed img {
+  opacity: 0.7;
 }
 .footer {
   margin-top: 128px;

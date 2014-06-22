@@ -138,8 +138,8 @@ document.addEventListener('DOMContentLoaded', function() {
   function getTileOriginalPos(tile) {
     return [
       parseInt(tile.getAttribute('data-row')),
-    parseInt(tile.getAttribute('data-col'))
-      ];
+      parseInt(tile.getAttribute('data-col'))
+    ];
   }
   function getTilePos(tile) {
     return [
@@ -168,21 +168,21 @@ document.addEventListener('DOMContentLoaded', function() {
       var my = mouseY - rect.right;
 
       var shadowX = (mx < 0)
-      ? Math.min(-mx / INNER_SHADOW_SCALE, INNER_SHADOW_MAX_OFFSET)
-      : (mx > rect.width)
-      ? Math.max((rect.width - mx) / INNER_SHADOW_SCALE, -INNER_SHADOW_MAX_OFFSET)
-      : 0 ;
-    var shadowY = (my < 0)
-      ? Math.min(-my / INNER_SHADOW_SCALE, INNER_SHADOW_MAX_OFFSET)
-      : (my > rect.height)
-      ? Math.max((rect.height - my) / INNER_SHADOW_SCALE, -INNER_SHADOW_MAX_OFFSET)
-      : 0 ;
-    e.style['boxShadow'] = 'inset ' 
-      + shadowX * shadow_factor + 'px '
-      + shadowY * shadow_factor + 'px '
-      + INNER_SHADOW_BLUR_RADIUS * shadow_factor + 'px '
-      + INNER_SHADOW_SPREAD_RADIUS * shadow_factor + 'px '
-      + INNER_SHADOW_COLOR;
+        ? Math.min(-mx / INNER_SHADOW_SCALE, INNER_SHADOW_MAX_OFFSET)
+        : (mx > rect.width)
+        ? Math.max((rect.width - mx) / INNER_SHADOW_SCALE, -INNER_SHADOW_MAX_OFFSET)
+        : 0 ;
+      var shadowY = (my < 0)
+        ? Math.min(-my / INNER_SHADOW_SCALE, INNER_SHADOW_MAX_OFFSET)
+        : (my > rect.height)
+        ? Math.max((rect.height - my) / INNER_SHADOW_SCALE, -INNER_SHADOW_MAX_OFFSET)
+        : 0 ;
+      e.style['boxShadow'] = 'inset ' 
+        + shadowX * shadow_factor + 'px '
+        + shadowY * shadow_factor + 'px '
+        + INNER_SHADOW_BLUR_RADIUS * shadow_factor + 'px '
+        + INNER_SHADOW_SPREAD_RADIUS * shadow_factor + 'px '
+        + INNER_SHADOW_COLOR;
     });
   }
   function renderGameContainerShadow() {
@@ -313,11 +313,6 @@ document.addEventListener('DOMContentLoaded', function() {
     );
     twttr.widgets.load(scoreSharingE);
 
-    if(keep_going)
-      document.getElementById('keepgoing-button').classList.add('hidden');  
-    else
-      document.getElementById('keepgoing-button').classList.remove('hidden');  
-
     var msgE = document.querySelector('.msg');  
     msgE.classList.remove('hidden'); 
     msgE.classList.remove('flipOutX');
@@ -390,6 +385,12 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if(cur_row == 1 && cur_col == 2) {
           cellElement.classList.add('BANG');
           okbangTileElements.push(cellElement);
+        } else if(((cur_row == 0) || (cur_row == 2))
+          && (cur_col == 1)) {
+          var bombE = document.createElement('img');
+          bombE.src = 'bomb.svg';
+          cellElement.appendChild(bombE);
+          cellElement.classList.add('bomb');
         }
 
         tileElements.push(cellElement);
@@ -432,6 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
         round_hide_tile_count = 0;
         round_score = 0;
         keep_going = false;
+        document.querySelector('.game-container').classList.remove('keep-going');
       }, 0],
       [function() { return (allTileInOriginalPosition() ? 'RoundStart' : 'ResetTilePosition'); }, 0],
 
@@ -447,6 +449,7 @@ document.addEventListener('DOMContentLoaded', function() {
       'RoundStart',
       [function() {
         input_allowed = true;
+        // remove stars, they may block click events
         starElements.forEach(function(e) {
           e.parentNode.removeChild(e);
         });
@@ -459,15 +462,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if(input_buffer.length == 3) {
           input_allowed = false;
           return 'ProcessInput'; 
-        }
+        } 
       }, 10],
       [function() { return 'WaitForInput'; }, 0],
 
       'ProcessInput',
-      [function() { }, 300], // wait for the last character revealed
+      [function() { }, 500], // wait for the last character revealed
       [function() {
+        var input_str = input_buffer.join('');
         var answerE = document.getElementById('answer');
-        if(input_buffer.join('') == 'OKBANG') {
+        if(input_str == 'XXX') {
+          // nothing
+        } else if(input_str == 'OKBANG') {
           answerE.classList.add('bounceOutUp');
           if(!keep_going) {
             // advance
@@ -500,8 +506,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if(stage_retries > 0)
             -- stage_retries;
         }
-
-        input_buffer.length = 0;
+        // restore tiles
         tileElements.forEach(function(e) {
           e.classList.remove('pressed');
         });
@@ -512,6 +517,11 @@ document.addEventListener('DOMContentLoaded', function() {
         answerE.innerHTML = '';
         answerE.classList.remove('bounceOutUp');
         answerE.classList.remove('shake');
+
+        var input_str = input_buffer.join('');
+        input_buffer.length = 0;
+        if(input_str == 'XXX')
+          return 'BombClicked';
       }, 0],
 
       'Shuffle',
@@ -588,10 +598,28 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 0],
 
       'KeepGoing',
+      [function() { }, 500], // wait for animation
       [function() { 
         keep_going = true;
+        document.querySelector('.game-container').classList.add('keep-going');
+        tileElements.forEach(function(e) {
+          e.classList.remove('revealed');
+          e.classList.add('revealed');
+        });
+      }, 1000],
+      [function() { // hide bombs
+        tileElements.forEach(function(e) {
+          if(e.classList.contains('bomb'))
+            e.classList.remove('revealed');
+        });
+      }, 1000], 
+
+      [function() {
         return 'Shuffle'; 
-      }, 0]
+      }, 0],
+
+      'BombClicked',
+      [function() { return 'ShowResult'; }, 0]
     ]);
   }
 
@@ -600,7 +628,7 @@ document.addEventListener('DOMContentLoaded', function() {
       evt.preventDefault();
       return;
     }
-    var e = evt.target;
+    var e = evt.currentTarget;
     if(e.classList.contains('pressed')) {
       evt.preventDefault();
       return;
@@ -608,6 +636,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     e.classList.add('pressed');
     e.classList.add('revealed');
+    
+    if(keep_going && e.classList.contains('bomb')) {
+      // set length to 3 such that 
+      // the game loop thinks that there are enough input
+      input_buffer = ['X', 'X', 'X'];
+      return;
+    }
+
     var is_space = ['O','K','BANG'].every(function(cls) {
       if(!e.classList.contains(cls))
         return true; // continue;
