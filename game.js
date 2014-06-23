@@ -228,7 +228,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function activateTiles() {
-    input_allowed = false;
     shadow_enabled = true;
     shadow_factor = 1.0;
     var l = [];
@@ -271,7 +270,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   function deactivateTiles() {
-    input_allowed = true;
     shadow_enabled = false;
     shadow_factor = 0.0;
     tileElements.forEach(function(e) {
@@ -427,6 +425,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.getElementById('question').innerHTML = 'Shall we start?';
 
+        input_allowed = false;
+
         round_question_idx = -1;
         round_shuffle_count = 0;
         round_hide_tile_count = 0;
@@ -437,7 +437,9 @@ document.addEventListener('DOMContentLoaded', function() {
       [function() { return (allTileInOriginalPosition() ? 'RoundStart' : 'ResetTilePosition'); }, 0],
 
       'ResetTilePosition',
-      [activateTiles, 500],
+      [function() {
+        activateTiles();
+      }, 500],
       [function() {
         tileElements.forEach(function(e) {
           var opos = getTileOriginalPos(e);
@@ -452,8 +454,9 @@ document.addEventListener('DOMContentLoaded', function() {
           e.parentNode.removeChild(e);
         });
         starElements.length = 0;
-      }, 0],
-      [deactivateTiles, 300],
+        input_allowed = true;
+        deactivateTiles();
+      }, 500],
 
       'WaitForInput',
       [function() { 
@@ -541,9 +544,13 @@ document.addEventListener('DOMContentLoaded', function() {
       'Shuffle',
       [function() {
         shuffle_left = round_shuffle_count;
-      }, 0],
-      [activateTiles, 500],
-      [function() { // hide some tiles according to the difficulty
+        input_allowed = false;
+        activateTiles();
+      }, 500],
+      [function() {
+        if(round_hide_tile_count == 0)
+          return 'ShuffleOnce'; // don't waste time if no tile is needded to hide
+
         // hide some tile according to the difficulty
         randomShuffle(okbangTileElements);
         okbangTileElements.forEach(function(e, i) {
@@ -563,9 +570,9 @@ document.addEventListener('DOMContentLoaded', function() {
       [function() { return 'ShuffleOnce'; }, 0],
 
       'ShuffleEnd',
-      [function() { // next question
-        deactivateTiles();
+      [function() { 
         if(stage_advanced && !keep_going) {
+          // show next question
           var e = document.getElementById('question');
           if(round_question_idx >= 0) {
             e.innerHTML = QUESTIONS[round_question_idx];
@@ -573,12 +580,10 @@ document.addEventListener('DOMContentLoaded', function() {
           e.classList.remove('bounceOut');
           e.classList.add('bounceIn');
         }
-      }, 300], 
-
-      [function() { 
         if(keep_going || (round_question_idx < QUESTIONS.length - 1))
           return 'RoundStart'; // next round
-      }, 0],
+        // else continue
+      }, 0], 
 
       'ShowResult',
       [function() { // Game finished
@@ -592,8 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       'WaitForButton',
       [function() {
-        if((button_clicked == 'StartOver') 
-          || (button_clicked == 'KeepGoing')) {
+        if((button_clicked == 'StartOver') || (button_clicked == 'KeepGoing')) {
           tmp_label = button_clicked;
           return 'HideScorePage';
         }
@@ -623,9 +627,6 @@ document.addEventListener('DOMContentLoaded', function() {
           e.classList.remove('pressed');
         });
         deactivateTiles();
-        // we are going to show and hide the bombs
-        // do not allow input here
-        input_allowed = false; 
       }, 500],
       [function() { 
         keep_going = true;
