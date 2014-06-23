@@ -13,11 +13,11 @@ document.addEventListener('DOMContentLoaded', function() {
     'Keep going!',
 
     'Getting harder...',
-    'Try to beat this game!',
+    'Try to get 200 stars!',
     'Let\'s have fun!',
 
-    'Hang in there!',
     'Give me a star?',
+    'Hang in there!',
     'Fork it!',
 
     'Watch carefully!',
@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     'You are awesome!',
   ];
+QUESTIONS = ['1','2'];
 
   // round info
   var round_question_idx = -1;
@@ -339,6 +340,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     return score;
   }
+  function showQuestion(str) {
+    var questionE = document.getElementById('question');
+    if(str)
+      questionE.innerHTML = str;
+    questionE.classList.add('bounceIn');
+    questionE.classList.remove('bounceOut');
+  }
+  function hideQuestion() {
+    var questionE = document.getElementById('question');
+    questionE.classList.remove('bounceIn');
+    questionE.classList.add('bounceOut');
+  }
 
   function init() {
     // setup board
@@ -423,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function() {
         msgE.classList.remove('flipInX');
         msgE.classList.remove('flipOutX');
 
-        document.getElementById('question').innerHTML = 'Shall we start?';
+        showQuestion('Shall we start?');
 
         input_allowed = false;
 
@@ -485,11 +498,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if(!keep_going) {
             // advance
             ++ round_question_idx;
-
-            // clear question
-            var questionE = document.getElementById('question');
-            questionE.classList.remove('bounceIn');
-            questionE.classList.add('bounceOut');
+            hideQuestion();
           }
 
           round_score += showStars(stage_retries);
@@ -573,12 +582,10 @@ document.addEventListener('DOMContentLoaded', function() {
       [function() { 
         if(stage_advanced && !keep_going) {
           // show next question
-          var e = document.getElementById('question');
-          if(round_question_idx >= 0) {
-            e.innerHTML = QUESTIONS[round_question_idx];
-          }
-          e.classList.remove('bounceOut');
-          e.classList.add('bounceIn');
+          showQuestion(
+            (round_question_idx >= 0) 
+              ? QUESTIONS[round_question_idx]
+              : '');
         }
         if(keep_going || (round_question_idx < QUESTIONS.length - 1))
           return 'RoundStart'; // next round
@@ -612,6 +619,7 @@ document.addEventListener('DOMContentLoaded', function() {
         msgE.classList.add('flipOutX');
       }, 500], 
       [function() { 
+        hideQuestion();
         activateTiles();
         clearTileHingeEffects();
       }, 700],
@@ -621,8 +629,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
       'KeepGoing',
       [function() {
+        showQuestion('The real deal!');
         // restore tiles
-        // user may have clicked tiles right before/after the score page
         tileElements.forEach(function(e) {
           e.classList.remove('pressed');
         });
