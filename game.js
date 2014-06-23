@@ -651,7 +651,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 1000], 
 
       [function() {
-        return 'Shuffle'; 
+        return 'RoundStart'; 
       }, 0],
 
       'BombClicked',
