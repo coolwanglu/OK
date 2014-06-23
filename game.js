@@ -9,15 +9,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
   var QUESTIONS = [
     'Give me an OK!',
-    'Do it again?',
-    'Keep going!',
+    'And one more?',
+    'Try to get 200 stars!',
 
     'Getting harder...',
-    'Try to get 200 stars!',
+    'Keep going!',
     'Let\'s have fun!',
 
-    'Give me a star?',
     'Hang in there!',
+    'Give me a star?',
     'Fork it!',
 
     'Watch carefully!',
