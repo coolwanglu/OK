@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     'You are awesome!',
   ];
-QUESTIONS = ['1','2'];
 
   // round info
   var round_question_idx = -1;
