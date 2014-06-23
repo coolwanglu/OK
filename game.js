@@ -66,9 +66,8 @@ document.addEventListener('DOMContentLoaded', function() {
   var difficulty = 1;
 
   var input_allowed = false;
-  var input_buffer = [];
+  var input_buffer = '';
   var button_clicked = false;
-
 
   function assert(condition) {
     if(!condition) {
@@ -438,7 +437,7 @@ document.addEventListener('DOMContentLoaded', function() {
       [function() { return (allTileInOriginalPosition() ? 'RoundStart' : 'ResetTilePosition'); }, 0],
 
       'ResetTilePosition',
-      [activateTiles, 300],
+      [activateTiles, 500],
       [function() {
         tileElements.forEach(function(e) {
           var opos = getTileOriginalPos(e);
@@ -458,7 +457,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
       'WaitForInput',
       [function() { 
-        if(input_buffer.length == 3) {
+        /*
+         * Cases
+         * OKBANG - pass
+         * BOMB - bomb
+         * others - fail
+         */
+        if((input_buffer != '') && (input_buffer != 'O') && (input_buffer != 'OK')) {
           input_allowed = false;
           return 'ProcessInput'; 
         } 
@@ -468,11 +473,11 @@ document.addEventListener('DOMContentLoaded', function() {
       'ProcessInput',
       [function() { }, 500], // wait for the last character revealed
       [function() {
-        var input_str = input_buffer.join('');
         var answerE = document.getElementById('answer');
-        if(input_str == 'XXX') {
-          // nothing
-        } else if(input_str == 'OKBANG') {
+        if(input_buffer == 'BOMB') {
+          // do nothing
+        } else if(input_buffer == 'OKBANG') {
+          // passed
           answerE.classList.add('bounceOutUp');
           if(!keep_going) {
             // advance
@@ -499,17 +504,26 @@ document.addEventListener('DOMContentLoaded', function() {
             round_hide_tile_count = Math.min(3, Math.floor(round_question_idx / 3));
           }
         } else {
+          // failed
           // continue this question
-          answerE.classList.add('shake');
           stage_advanced = false;
           if(stage_retries > 0)
             -- stage_retries;
+          
+          // start shaking the answer box
+          answerE.classList.add('shake');
+
+          // reveal all OK! tiles
+          okbangTileElements.forEach(function(e) {
+            e.classList.add('revealed');
+          });
         }
+
         // restore tiles
         tileElements.forEach(function(e) {
           e.classList.remove('pressed');
         });
-      }, 300], // wait for animation
+      }, 700], // wait for animation
 
       [function() { // clear answer box
         var answerE = document.getElementById('answer');
@@ -517,10 +531,11 @@ document.addEventListener('DOMContentLoaded', function() {
         answerE.classList.remove('bounceOutUp');
         answerE.classList.remove('shake');
 
-        var input_str = input_buffer.join('');
-        input_buffer.length = 0;
-        if(input_str == 'XXX')
+        var bombClicked = (input_buffer == 'BOMB');
+        input_buffer = '';
+        if(bombClicked) {
           return 'BombClicked';
+        }
       }, 0],
 
       'Shuffle',
@@ -653,7 +668,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if(keep_going && e.classList.contains('bomb')) {
       // set length to 3 such that 
       // the game loop thinks that there are enough input
-      input_buffer = ['X', 'X', 'X'];
+      input_buffer = 'BOMB';
       return;
     }
 
@@ -662,7 +677,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return true; // continue;
 
       assert(input_buffer.indexOf(cls) === -1);
-      input_buffer.push(cls);
+      input_buffer += cls;
       document.getElementById('answer').innerHTML += 
         '<span>' + ((cls == 'BANG') ? '!' : cls) + '</span>';
       
