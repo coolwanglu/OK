@@ -522,10 +522,8 @@ body {
   opacity: 0.7;
 }
 .footer {
-  position: absolute;
-  left: 0px;
-  right: 0px;
-  bottom: 24px;
+  margin-top: 48px;
+  width: 100%;
   font-size: 16px;
   text-align: center;
   color: rgba(0,0,0,0.45);

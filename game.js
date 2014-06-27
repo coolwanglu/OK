@@ -308,7 +308,10 @@ document.addEventListener('DOMContentLoaded', function() {
         ? ('I just scored ⭐️' + round_score + ' in OK! How much can you get? #OK!')
         : ('I just played OK! Check it out! #OK')
     );
-    twttr.widgets.load(scoreSharingE);
+    try {
+      twttr.widgets.load(scoreSharingE);
+    } catch(e) {}
+
 
     var msgE = document.querySelector('.msg');  
     msgE.classList.remove('hidden'); 
