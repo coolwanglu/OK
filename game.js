@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function renderShadow() {
     if(shadow_enabled) {
       renderInnerShadowGrids();
-      renderTileShadow();
+      //renderTileShadow();
     }
     renderGameContainerShadow();
   }
@@ -248,6 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.classList.remove('zoomIn');
       }
     });
+    renderTileShadow();
   }
   function shuffleTiles () {
     var l = [];
